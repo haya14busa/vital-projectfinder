@@ -42,7 +42,7 @@ endfunction
 " cwd: current working directory
 " @rps root patterns
 " @return empty string if not found
-function! s:project_root_from_cwd(rps) abort
+function! s:_pr_from_cwd(rps) abort
   " rp: normalized root pattern
   for rp in map(copy(a:rps), 's:_shellslash(v:val)')
     let level_to_root = 1 + s:_cnt_char(rp, '/')
@@ -55,22 +55,31 @@ function! s:project_root_from_cwd(rps) abort
   return ''
 endfunction
 
-
 " @rps root patterns
-" @from directory or file path searching root from (absolute/relative)
-" @return project root directory, otherwise empty string if not found
-function! s:project_root(rps, from) abort
-  let default = '' " for not found
+" @from directory or file path searching root from (absolute/relative).
+" @return empty string if not found
+function! s:_pr_from(rps, from) abort
+  let notfound = '' " for not found
   let dir = isdirectory(a:from) ? a:from : fnamemodify(a:from, ':p:h')
-  if !isdirectory(dir) | return default | endif
+  if !isdirectory(dir) | return notfound | endif
+  " NOTE: findir('.git', a:from . ';') doesn't work...
   let cwd_save = getcwd()
   try
     call s:_lcd(dir)
-    return s:project_root_from_cwd(a:rps)
+    return s:_pr_from_cwd(a:rps)
   finally
     call s:_lcd(cwd_save)
   endtry
-  return default
+  return notfound
+endfunction
+
+" @rps root patterns
+" @from directory or file path searching root from (absolute/relative).
+"       default: current working directory
+" @return project root directory, otherwise empty string if not found
+function! s:project_root(rps, ...) abort
+  let from = get(a:, 1, '')
+  return s:_empty(from) ? s:_pr_from_cwd(a:rps) : s:_pr_from(a:rps, from)
 endfunction
 
 let &cpo = s:save_cpo
