@@ -14,10 +14,6 @@ function! s:_empty(expr) abort
   return type(a:expr) is# type('') ? a:expr is# '' : empty(a:expr)
 endfunction
 
-function! s:_lcd(path) abort
-  execute 'lcd' fnameescape(a:path)
-endfunction
-
 function! s:_is_winshell() abort
   return &shell =~? 'cmd' || exists('+shellslash') && !&shellslash
 endfunction
