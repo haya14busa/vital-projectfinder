@@ -37,41 +37,11 @@ function! s:_cnt_char(str, char) abort
   return len(filter(split(a:str, '\zs'), 'v:val is# a:char'))
 endfunction
 
+function! s:_to_dir(path) abort
+  return isdirectory(a:path) ? a:path : fnamemodify(a:path, ':h')
+endfunction
+
 " -- main
-
-" cwd: current working directory
-" @rps root patterns
-" @return empty string if not found
-function! s:_pr_from_cwd(rps) abort
-  " rp: normalized root pattern
-  for rp in map(copy(a:rps), 's:_shellslash(v:val)')
-    let level_to_root = 1 + s:_cnt_char(rp, '/')
-    let Find = s:_is_dir_pattern(rp) ? function('finddir') : function('findfile')
-    let target = call(Find, [rp, ';'])
-    if !s:_empty(target)
-      return fnamemodify(target, ':p' . repeat(':h', level_to_root))
-    endif
-  endfor
-  return ''
-endfunction
-
-" @rps root patterns
-" @from directory or file path searching root from (absolute/relative).
-" @return empty string if not found
-function! s:_pr_from(rps, from) abort
-  let notfound = '' " for not found
-  let dir = isdirectory(a:from) ? a:from : fnamemodify(a:from, ':p:h')
-  if !isdirectory(dir) | return notfound | endif
-  " NOTE: findir('.git', a:from . ';') doesn't work...
-  let cwd_save = getcwd()
-  try
-    call s:_lcd(dir)
-    return s:_pr_from_cwd(a:rps)
-  finally
-    call s:_lcd(cwd_save)
-  endtry
-  return notfound
-endfunction
 
 " @rps root patterns
 " @from directory or file path searching root from (absolute/relative).
@@ -79,7 +49,17 @@ endfunction
 " @return project root directory, otherwise empty string if not found
 function! s:project_root(rps, ...) abort
   let from = get(a:, 1, '')
-  return s:_empty(from) ? s:_pr_from_cwd(a:rps) : s:_pr_from(a:rps, from)
+  let from_dir = fnamemodify(s:_to_dir(from), ':p')
+  " rp: normalized root pattern
+  for rp in map(copy(a:rps), 's:_shellslash(v:val)')
+    let level_to_root = 1 + s:_cnt_char(rp, '/')
+    let Find = s:_is_dir_pattern(rp) ? function('finddir') : function('findfile')
+    let target = call(Find, [rp, from_dir . ';'])
+    if !s:_empty(target)
+      return fnamemodify(target, ':p' . repeat(':h', level_to_root))
+    endif
+  endfor
+  return ''
 endfunction
 
 let &cpo = s:save_cpo
